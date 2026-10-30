@@ -25,6 +25,8 @@ class YukisboxService:
             lines.append(f"### KEY #{idx}")
             lines.append(f"RENDER_API_KEY_{idx}={k.get('api_key')}")
             lines.append(f"RENDER_EMAIL_{idx}={k.get('email') or 'N/A'}")
+            if k.get('password'):
+                lines.append(f"RENDER_PASSWORD_{idx}={k.get('password')}")
             lines.append(f"RENDER_WORKSPACE_{idx}={k.get('workspace') or 'N/A'}")
             lines.append(f"RENDER_OWNER_ID_{idx}={k.get('owner_id') or 'N/A'}")
             created = k.get("timestamp") or k.get("created_at") or now_utc.isoformat()

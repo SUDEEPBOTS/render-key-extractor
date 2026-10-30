@@ -2,6 +2,7 @@ import random
 import re
 import string
 import requests
+from app.services.db import save_mail_credential
 
 YUKI_MAIL_BASE = "https://mail.yukisbox.com"
 
@@ -46,6 +47,7 @@ class MailService:
             if r.status_code == 200 and data.get("success"):
                 address = data.get("address")
                 token = data.get("token") or address
+                save_mail_credential(address, password)
                 return {
                     "success": True,
                     "email": address,

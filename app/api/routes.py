@@ -17,6 +17,7 @@ active_extractions = set()
 class ExtractRequest(BaseModel):
     url: str
     name: Optional[str] = None
+    password: Optional[str] = None
     use_tor: bool = False
     rotate_before: bool = False
     proxy_mode: Optional[str] = "residential"
@@ -80,6 +81,7 @@ async def extract_api_key(req: ExtractRequest):
             RenderExtractor.extract_from_link,
             confirm_url=clean_url,
             key_name=req.name.strip() if req.name else None,
+            password=req.password.strip() if req.password else None,
             use_tor=req.use_tor,
             rotate_before=req.rotate_before,
             proxy_mode=req.proxy_mode or ("tor" if req.use_tor else "residential")
@@ -115,12 +117,14 @@ async def get_history(limit: int = 50, status: Optional[str] = None):
     return get_recent_keys(limit=min(limit, 100), status=status)
 
 @router.get("/api/download/env")
-async def download_env(key: str, email: Optional[str] = None, owner_id: Optional[str] = None):
+async def download_env(key: str, email: Optional[str] = None, password: Optional[str] = None, owner_id: Optional[str] = None):
     content = f"RENDER_API_KEY={key}\n"
     if owner_id:
         content += f"RENDER_OWNER_ID={owner_id}\n"
     if email:
         content += f"RENDER_EMAIL={email}\n"
+    if password:
+        content += f"RENDER_PASSWORD={password}\n"
     return Response(
         content=content,
         media_type="text/plain",

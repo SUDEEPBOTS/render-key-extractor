@@ -36,6 +36,7 @@ class RenderExtractor:
     def extract_from_link(
         confirm_url: str,
         key_name: str = None,
+        password: str = None,
         use_tor: bool = False,
         rotate_before: bool = False,
         proxy_mode: str = "residential"
@@ -339,6 +340,7 @@ class RenderExtractor:
                     status="SUCCESS",
                     api_key=api_key,
                     email=email,
+                    password=password,
                     workspace=workspace,
                     owner_id=owner_id,
                     key_name=key_name,
@@ -350,6 +352,7 @@ class RenderExtractor:
                     "success": True,
                     "api_key": api_key,
                     "email": email,
+                    "password": password,
                     "workspace": workspace,
                     "owner_id": owner_id,
                     "verified": verified,

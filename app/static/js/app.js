@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const resultKey = document.getElementById("result-key");
     const btnCopyKey = document.getElementById("btn-copy-key");
     const resultEmail = document.getElementById("result-email");
+    const resultPassword = document.getElementById("result-password");
+    const btnCopyResultPassword = document.getElementById("btn-copy-result-password");
     const resultWorkspace = document.getElementById("result-workspace");
     const resultOwner = document.getElementById("result-owner");
     const resultIp = document.getElementById("result-ip");
@@ -172,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     url: url,
                     name: keyName || null,
+                    password: autoPasswordInput ? autoPasswordInput.value.trim() : null,
                     use_tor: useTor,
                     rotate_before: rotate,
                     proxy_mode: proxyMode
@@ -251,6 +254,9 @@ document.addEventListener("DOMContentLoaded", () => {
         errorMessage.textContent = "";
         resultKey.value = data.api_key;
         resultEmail.textContent = data.email || "N/A";
+        if (resultPassword) {
+            resultPassword.textContent = data.password || (autoPasswordInput ? autoPasswordInput.value : "-");
+        }
         resultWorkspace.textContent = data.workspace || "N/A";
         resultOwner.textContent = data.owner_id || "N/A";
         resultIp.textContent = `${data.ip_used} (${data.used_tor ? "Tor Proxy" : "Direct"})`;
@@ -259,6 +265,22 @@ document.addEventListener("DOMContentLoaded", () => {
         
         resultCard.classList.remove("hidden");
         resultCard.scrollIntoView({ behavior: "smooth" });
+    }
+
+    if (btnCopyResultPassword) {
+        btnCopyResultPassword.addEventListener("click", () => {
+            const pass = resultPassword ? resultPassword.textContent : "";
+            if (!pass || pass === "-") return;
+            navigator.clipboard.writeText(pass).then(() => {
+                const orig = btnCopyResultPassword.textContent;
+                btnCopyResultPassword.textContent = "Copied!";
+                btnCopyResultPassword.style.backgroundColor = "#10b981";
+                setTimeout(() => {
+                    btnCopyResultPassword.textContent = orig;
+                    btnCopyResultPassword.style.backgroundColor = "";
+                }, 1500);
+            });
+        });
     }
 
     // Copy Key Button
@@ -280,7 +302,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnDownloadEnv) {
         btnDownloadEnv.addEventListener("click", () => {
             if (!resultKey.value) return;
-            const url = `/api/download/env?key=${encodeURIComponent(resultKey.value)}&email=${encodeURIComponent(resultEmail.textContent)}&owner_id=${encodeURIComponent(resultOwner.textContent)}`;
+            const passVal = resultPassword ? resultPassword.textContent : "";
+            const url = `/api/download/env?key=${encodeURIComponent(resultKey.value)}&email=${encodeURIComponent(resultEmail.textContent)}&password=${encodeURIComponent(passVal !== "-" ? passVal : "")}&owner_id=${encodeURIComponent(resultOwner.textContent)}`;
             window.location.href = url;
         });
     }
@@ -620,7 +643,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (records.length === 0) {
-                historyTbody.innerHTML = '<tr><td colspan="7" class="text-center">No keys extracted yet</td></tr>';
+                historyTbody.innerHTML = '<tr><td colspan="8" class="text-center">No keys extracted yet</td></tr>';
                 return;
             }
 
@@ -639,11 +662,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const copyBtn = fullKey ? `<button type="button" class="btn btn-sm btn-copy" style="margin-left: 8px; padding: 2px 6px;" onclick="navigator.clipboard.writeText('${fullKey}'); this.textContent='Copied'; setTimeout(() => this.textContent='Copy', 1500);">Copy</button>` : '';
 
+                const passVal = r.password || "-";
+                const copyPassBtn = (r.password && r.password !== "-") ? `<button type="button" class="btn btn-sm btn-copy" style="margin-left: 6px; padding: 2px 6px; font-size: 11px;" onclick="navigator.clipboard.writeText('${r.password}'); this.textContent='Copied'; setTimeout(() => this.textContent='Copy', 1500);">Copy</button>` : '';
+
                 return `
                     <tr>
                         <td>${time}</td>
                         <td><code>${maskedKey}</code>${copyBtn}</td>
                         <td>${r.email || "-"}</td>
+                        <td><code>${passVal}</code>${copyPassBtn}</td>
                         <td>${r.workspace || "-"}</td>
                         <td>${routeTag}</td>
                         <td>${r.ip_used || "-"}</td>
