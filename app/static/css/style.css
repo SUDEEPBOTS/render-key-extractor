@@ -315,6 +315,16 @@ input[type="text"]:focus {
     cursor: not-allowed;
 }
 
+.btn-warning {
+    background-color: #d97706;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background-color: #b45309;
+}
+
 .btn-secondary {
     background-color: #1e293b;
     border: 1px solid var(--border-color);

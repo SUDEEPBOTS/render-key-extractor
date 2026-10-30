@@ -111,11 +111,16 @@
                     <a href="https://dashboard.render.com/register" target="_blank" class="btn btn-secondary" id="btn-open-render">
                         Open Render Sign Up
                     </a>
+                    <button type="button" class="btn btn-warning" id="btn-retry-mail" style="display: none; min-width: 160px;">
+                        Retry Extraction
+                    </button>
                     <div class="status-indicator-box">
                         <span class="pulse-dot"></span>
                         <span id="mail-listener-status">Listening for Render confirmation email... (Checked 0 times)</span>
                     </div>
                 </div>
+            </div>
+
             <!-- Dynamic Progress & Status Indicator (Visible during Auto & Manual modes) -->
             <div id="progress-box" class="progress-box hidden" style="margin-top: 20px;">
                 <div class="progress-bar-container">

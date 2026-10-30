@@ -145,8 +145,13 @@ async def generate_mail(req: Optional[MailGenerateRequest] = None):
     return result
 
 @router.get("/api/mail/check")
-async def check_mail(token: str, provider: str = "yuki"):
-    result = await run_in_threadpool(MailService.check_render_email, token=token, provider=provider)
+async def check_mail(token: str, provider: str = "yuki", exclude_ids: Optional[str] = None):
+    result = await run_in_threadpool(
+        MailService.check_render_email,
+        token=token,
+        provider=provider,
+        exclude_ids=exclude_ids
+    )
     return result
 
 @router.post("/api/yukisbox/upload")

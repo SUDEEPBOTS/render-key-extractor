@@ -63,7 +63,7 @@ class MailService:
             return {"success": False, "error": str(e)}
 
     @staticmethod
-    def check_render_email(token: str, provider: str = "yuki") -> dict:
+    def check_render_email(token: str, provider: str = "yuki", exclude_ids: str = None) -> dict:
         try:
             r = requests.get(
                 f"{YUKI_MAIL_BASE}/api/emails",
@@ -79,9 +79,16 @@ class MailService:
 
             pattern = r'(https?://(?:track\.pstmrk\.it/3[a-z]?/dashboard\.render\.com%2Femail-confirm[^\s"\'<>]+|dashboard\.render\.com/email-confirm[^\s"\'<>]+))'
 
+            excluded_set = set()
+            if exclude_ids:
+                excluded_set = {str(x).strip() for x in re.split(r'[,;|\s]+', str(exclude_ids)) if str(x).strip()}
+
             # Iterate through emails to find the one containing the activation link
             for em in emails:
-                msg_id = em.get("id")
+                msg_id = str(em.get("id"))
+                if msg_id in excluded_set:
+                    continue
+
                 subject = em.get("subject", "")
                 
                 # Fetch email detail

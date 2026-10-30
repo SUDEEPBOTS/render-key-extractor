@@ -191,11 +191,17 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!res.ok || !data.success) {
                 const msg = data.detail || data.error || "Failed to extract key.";
                 showError(msg);
-                mailListenerStatus.textContent = "Extraction failed: " + msg;
+                mailListenerStatus.textContent = "Extraction failed: " + msg + " (Click 'Retry Extraction' and resend on Render)";
                 mailListenerStatus.style.color = "#ef4444";
+                if (btnRetryMail) {
+                    btnRetryMail.style.display = "inline-flex";
+                    btnRetryMail.disabled = false;
+                    btnRetryMail.textContent = "Retry Extraction";
+                }
             } else {
                 mailListenerStatus.textContent = "Render API Key successfully generated & verified!";
                 mailListenerStatus.style.color = "#10b981";
+                if (btnRetryMail) btnRetryMail.style.display = "none";
                 showResult(data);
                 loadHistory();
                 if (confirmUrlInput) confirmUrlInput.value = "";
@@ -205,8 +211,13 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             stopProgress();
             showError("Network connection error: " + err.message);
-            mailListenerStatus.textContent = "Error: " + err.message;
+            mailListenerStatus.textContent = "Error: " + err.message + " (Click 'Retry Extraction' and resend on Render)";
             mailListenerStatus.style.color = "#ef4444";
+            if (btnRetryMail) {
+                btnRetryMail.style.display = "inline-flex";
+                btnRetryMail.disabled = false;
+                btnRetryMail.textContent = "Retry Extraction";
+            }
         } finally {
             btnSubmit.disabled = false;
             btnText.textContent = "Extract From Pasted Link";
@@ -276,11 +287,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnCopyEmail = document.getElementById("btn-copy-email");
     const btnCopyPassword = document.getElementById("btn-copy-password");
     const mailListenerStatus = document.getElementById("mail-listener-status");
+    const btnRetryMail = document.getElementById("btn-retry-mail");
 
     let mailPollInterval = null;
     let mailCheckCount = 0;
     let currentMailToken = null;
     let currentMailProvider = "yuki";
+    let consumedMailIds = new Set();
 
     // Dynamic Domain Loading per Provider
     if (mailProviderSelect && mailDomainSelect) {
@@ -320,6 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (res.ok && data.success) {
                     currentMailToken = data.token;
                     currentMailProvider = data.provider || provider;
+                    consumedMailIds.clear();
                     autoEmailInput.value = data.email;
                     autoPasswordInput.value = data.password;
                     credentialsPanel.classList.remove("hidden");
@@ -343,17 +357,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function startMailListener(token, provider) {
         if (mailPollInterval) clearInterval(mailPollInterval);
+        if (btnRetryMail) btnRetryMail.style.display = "none";
         
         mailPollInterval = setInterval(async () => {
             mailCheckCount++;
             mailListenerStatus.textContent = `Listening for Render confirmation email... (Checked ${mailCheckCount} times)`;
 
             try {
-                const res = await fetch(`/api/mail/check?token=${encodeURIComponent(token)}&provider=${encodeURIComponent(provider)}`);
+                const excludeParam = Array.from(consumedMailIds).join(",");
+                const url = `/api/mail/check?token=${encodeURIComponent(token)}&provider=${encodeURIComponent(provider)}` + (excludeParam ? `&exclude_ids=${encodeURIComponent(excludeParam)}` : "");
+                const res = await fetch(url);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.found && data.confirm_url) {
                         clearInterval(mailPollInterval);
+                        if (data.msg_id) {
+                            consumedMailIds.add(String(data.msg_id));
+                        }
                         mailListenerStatus.textContent = "Confirmation email detected! Auto-starting key extraction...";
                         mailListenerStatus.style.color = "#10b981";
 
@@ -369,10 +389,32 @@ document.addEventListener("DOMContentLoaded", () => {
             // Stop polling after 180 checks (6 minutes)
             if (mailCheckCount >= 180) {
                 clearInterval(mailPollInterval);
-                mailListenerStatus.textContent = "Listening timed out (6 min). Click generate to try again.";
+                mailListenerStatus.textContent = "Listening timed out. Click 'Retry Extraction' and resend verification email on Render.";
                 mailListenerStatus.style.color = "#ef4444";
+                if (btnRetryMail) {
+                    btnRetryMail.style.display = "inline-flex";
+                    btnRetryMail.disabled = false;
+                    btnRetryMail.textContent = "Retry Extraction";
+                }
             }
         }, 2000);
+    }
+
+    // Retry Button Handler (Re-poll incoming email for same credentials without clearing them)
+    if (btnRetryMail) {
+        btnRetryMail.addEventListener("click", () => {
+            if (!currentMailToken) {
+                alert("No active mail session found. Please generate credentials first.");
+                return;
+            }
+            btnRetryMail.disabled = true;
+            btnRetryMail.textContent = "Listening...";
+            mailCheckCount = 0;
+            mailListenerStatus.textContent = `Re-listening on ${autoEmailInput.value || currentMailToken}... (Click 'Resend' on Render)`;
+            mailListenerStatus.style.color = "#f59e0b";
+            if (errorBanner) errorBanner.classList.add("hidden");
+            startMailListener(currentMailToken, currentMailProvider);
+        });
     }
 
     if (btnCopyEmail) {
