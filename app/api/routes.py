@@ -4,13 +4,15 @@ from pydantic import BaseModel
 from typing import Optional
 from starlette.concurrency import run_in_threadpool
 
-from app.services.extractor import RenderExtractor
+from app.services.extractor import RenderExtractor, normalize_confirm_url
 from app.services.tor_manager import TorManager
 from app.services.mail_service import MailService
 from app.services.yukisbox_service import YukisboxService
 from app.services.db import get_recent_keys
 
 router = APIRouter()
+
+active_extractions = set()
 
 class ExtractRequest(BaseModel):
     url: str
@@ -67,11 +69,16 @@ async def extract_api_key(req: ExtractRequest):
     if not req.url or not req.url.strip():
         raise HTTPException(status_code=400, detail="Confirmation URL is required.")
 
+    clean_url = normalize_confirm_url(req.url.strip())
+    if clean_url in active_extractions:
+        raise HTTPException(status_code=429, detail="This confirmation link is already being processed. Please wait.")
+
+    active_extractions.add(clean_url)
     try:
         # Execute Playwright automation in threadpool so it doesn't block async event loop
         result = await run_in_threadpool(
             RenderExtractor.extract_from_link,
-            confirm_url=req.url.strip(),
+            confirm_url=clean_url,
             key_name=req.name.strip() if req.name else None,
             use_tor=req.use_tor,
             rotate_before=req.rotate_before,
@@ -86,6 +93,8 @@ async def extract_api_key(req: ExtractRequest):
             "error": f"Extraction exception: {str(e)}",
             "trace": err_trace
         }
+    finally:
+        active_extractions.discard(clean_url)
 
     if not result.get("success"):
         raise HTTPException(status_code=422, detail=result.get("error", "Key extraction failed."))

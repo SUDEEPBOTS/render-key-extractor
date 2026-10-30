@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnRefreshHistory = document.getElementById("btn-refresh-history");
 
     let progressInterval = null;
+    let isExtracting = false;
 
     // Initialize Network & Proxy Status
     async function updateNetworkStatus() {
@@ -147,7 +148,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Unified Direct Extraction Function (No Paste, 100% Automated)
     async function executeExtraction(url, keyName = null) {
-        if (!url) return;
+        if (!url || isExtracting) return;
+        isExtracting = true;
 
         const proxyMode = proxyModeSelect ? proxyModeSelect.value : "residential";
         const useTor = (proxyMode === "tor") || (torToggle && torToggle.checked);
@@ -158,6 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btnText.textContent = "Extracting...";
         btnSpinner.classList.remove("hidden");
         errorBanner.classList.add("hidden");
+        errorMessage.textContent = "";
         resultCard.classList.add("hidden");
 
         startProgressSteps(useTor);
@@ -199,6 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnRetryMail.textContent = "Retry Extraction";
                 }
             } else {
+                errorBanner.classList.add("hidden");
+                errorMessage.textContent = "";
                 mailListenerStatus.textContent = "Render API Key successfully generated & verified!";
                 mailListenerStatus.style.color = "#10b981";
                 if (btnRetryMail) btnRetryMail.style.display = "none";
@@ -219,6 +224,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnRetryMail.textContent = "Retry Extraction";
             }
         } finally {
+            isExtracting = false;
             btnSubmit.disabled = false;
             btnText.textContent = "Extract From Pasted Link";
             btnSpinner.classList.add("hidden");
@@ -241,6 +247,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showResult(data) {
+        errorBanner.classList.add("hidden");
+        errorMessage.textContent = "";
         resultKey.value = data.api_key;
         resultEmail.textContent = data.email || "N/A";
         resultWorkspace.textContent = data.workspace || "N/A";
@@ -316,8 +324,11 @@ document.addEventListener("DOMContentLoaded", () => {
             btnGenerateMail.disabled = true;
             btnGenerateMail.textContent = "Generating...";
             
-            if (mailPollInterval) clearInterval(mailPollInterval);
+            if (mailPollInterval) clearTimeout(mailPollInterval);
             mailCheckCount = 0;
+            errorBanner.classList.add("hidden");
+            errorMessage.textContent = "";
+            if (btnRetryMail) btnRetryMail.style.display = "none";
 
             const provider = mailProviderSelect ? mailProviderSelect.value : "yuki";
             const domain = mailDomainSelect ? mailDomainSelect.value : null;
@@ -356,39 +367,53 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function startMailListener(token, provider) {
-        if (mailPollInterval) clearInterval(mailPollInterval);
+        if (mailPollInterval) clearTimeout(mailPollInterval);
         if (btnRetryMail) btnRetryMail.style.display = "none";
         
-        mailPollInterval = setInterval(async () => {
+        let activeToken = token;
+        let isPollingStep = false;
+
+        async function pollStep() {
+            if (currentMailToken !== activeToken) {
+                return; // Token has changed, stop this listener instance
+            }
+            if (isExtracting || isPollingStep) {
+                // Wait and re-check after delay
+                mailPollInterval = setTimeout(pollStep, 2000);
+                return;
+            }
+
+            isPollingStep = true;
             mailCheckCount++;
             mailListenerStatus.textContent = `Listening for Render confirmation email... (Checked ${mailCheckCount} times)`;
 
             try {
                 const excludeParam = Array.from(consumedMailIds).join(",");
-                const url = `/api/mail/check?token=${encodeURIComponent(token)}&provider=${encodeURIComponent(provider)}` + (excludeParam ? `&exclude_ids=${encodeURIComponent(excludeParam)}` : "");
+                const url = `/api/mail/check?token=${encodeURIComponent(activeToken)}&provider=${encodeURIComponent(provider)}` + (excludeParam ? `&exclude_ids=${encodeURIComponent(excludeParam)}` : "");
                 const res = await fetch(url);
-                if (res.ok) {
+                if (res.ok && currentMailToken === activeToken) {
                     const data = await res.json();
                     if (data.found && data.confirm_url) {
-                        clearInterval(mailPollInterval);
                         if (data.msg_id) {
                             consumedMailIds.add(String(data.msg_id));
                         }
                         mailListenerStatus.textContent = "Confirmation email detected! Auto-starting key extraction...";
                         mailListenerStatus.style.color = "#10b981";
 
-                        // Directly start extraction without any manual copy-paste!
                         if (confirmUrlInput) confirmUrlInput.value = data.confirm_url;
+                        isPollingStep = false;
                         await executeExtraction(data.confirm_url);
+                        return;
                     }
                 }
             } catch (e) {
                 console.warn("Mail check error:", e);
+            } finally {
+                isPollingStep = false;
             }
 
             // Stop polling after 180 checks (6 minutes)
             if (mailCheckCount >= 180) {
-                clearInterval(mailPollInterval);
                 mailListenerStatus.textContent = "Listening timed out. Click 'Retry Extraction' and resend verification email on Render.";
                 mailListenerStatus.style.color = "#ef4444";
                 if (btnRetryMail) {
@@ -396,8 +421,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnRetryMail.disabled = false;
                     btnRetryMail.textContent = "Retry Extraction";
                 }
+                return;
             }
-        }, 2000);
+
+            if (currentMailToken === activeToken && !isExtracting) {
+                mailPollInterval = setTimeout(pollStep, 2000);
+            }
+        }
+
+        // Kick off first step
+        mailPollInterval = setTimeout(pollStep, 1000);
     }
 
     // Retry Button Handler (Re-poll incoming email for same credentials without clearing them)
@@ -488,9 +521,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             // Automatically queue and generate next email credentials!
             if (btnGenerateMail) {
+                mailListenerStatus.textContent = `Batch (${collectedBatchKeys.length}/${target}) Key verified & saved! Generating next credentials...`;
+                mailListenerStatus.style.color = "#38bdf8";
                 setTimeout(() => {
                     btnGenerateMail.click();
-                }, 1500);
+                }, 1800);
             }
         }
     }
