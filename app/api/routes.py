@@ -67,15 +67,25 @@ async def extract_api_key(req: ExtractRequest):
     if not req.url or not req.url.strip():
         raise HTTPException(status_code=400, detail="Confirmation URL is required.")
 
-    # Execute Playwright automation in threadpool so it doesn't block async event loop
-    result = await run_in_threadpool(
-        RenderExtractor.extract_from_link,
-        confirm_url=req.url.strip(),
-        key_name=req.name.strip() if req.name else None,
-        use_tor=req.use_tor,
-        rotate_before=req.rotate_before,
-        proxy_mode=req.proxy_mode or ("tor" if req.use_tor else "residential")
-    )
+    try:
+        # Execute Playwright automation in threadpool so it doesn't block async event loop
+        result = await run_in_threadpool(
+            RenderExtractor.extract_from_link,
+            confirm_url=req.url.strip(),
+            key_name=req.name.strip() if req.name else None,
+            use_tor=req.use_tor,
+            rotate_before=req.rotate_before,
+            proxy_mode=req.proxy_mode or ("tor" if req.use_tor else "residential")
+        )
+    except Exception as e:
+        import traceback
+        err_trace = traceback.format_exc()
+        print("EXTRACTION_TRACEBACK:\n", err_trace)
+        return {
+            "success": False,
+            "error": f"Extraction exception: {str(e)}",
+            "trace": err_trace
+        }
 
     if not result.get("success"):
         raise HTTPException(status_code=422, detail=result.get("error", "Key extraction failed."))
