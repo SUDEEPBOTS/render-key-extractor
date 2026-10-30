@@ -37,7 +37,15 @@ class RenderExtractor:
                     "user_data_dir": profile_dir,
                     "headless": True,
                     "user_agent": Config.BROWSER_USER_AGENT,
-                    "viewport": {"width": 1280, "height": 900}
+                    "viewport": {"width": 1280, "height": 900},
+                    "args": [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--no-first-run",
+                        "--disable-extensions"
+                    ]
                 }
                 
                 if use_tor:
