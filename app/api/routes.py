@@ -1,3 +1,5 @@
+import asyncio
+import time
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -13,6 +15,7 @@ from app.services.db import get_recent_keys
 router = APIRouter()
 
 active_extractions = set()
+completed_extractions = {}
 
 class ExtractRequest(BaseModel):
     url: str
@@ -71,8 +74,25 @@ async def extract_api_key(req: ExtractRequest):
         raise HTTPException(status_code=400, detail="Confirmation URL is required.")
 
     clean_url = normalize_confirm_url(req.url.strip())
+
+    # Check if this link was already successfully completed recently
+    if clean_url in completed_extractions:
+        cached_result, ts = completed_extractions[clean_url]
+        if time.time() - ts < 600 and cached_result.get("success"):
+            return cached_result
+
+    # If extraction for this exact token is already in flight, wait and return its result!
     if clean_url in active_extractions:
-        raise HTTPException(status_code=429, detail="This confirmation link is already being processed. Please wait.")
+        for _ in range(40):
+            await asyncio.sleep(1)
+            if clean_url in completed_extractions:
+                cached_res, _ = completed_extractions[clean_url]
+                if cached_res.get("success"):
+                    return cached_res
+            if clean_url not in active_extractions:
+                break
+        if clean_url in completed_extractions:
+            return completed_extractions[clean_url][0]
 
     active_extractions.add(clean_url)
     try:
@@ -86,6 +106,8 @@ async def extract_api_key(req: ExtractRequest):
             rotate_before=req.rotate_before,
             proxy_mode=req.proxy_mode or ("tor" if req.use_tor else "residential")
         )
+        if result.get("success"):
+            completed_extractions[clean_url] = (result, time.time())
     except Exception as e:
         import traceback
         err_trace = traceback.format_exc()
