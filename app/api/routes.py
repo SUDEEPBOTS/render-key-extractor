@@ -17,6 +17,7 @@ class ExtractRequest(BaseModel):
     name: Optional[str] = None
     use_tor: bool = False
     rotate_before: bool = False
+    proxy_mode: Optional[str] = "residential"
 
 class MailGenerateRequest(BaseModel):
     provider: str = "yuki"
@@ -72,7 +73,8 @@ async def extract_api_key(req: ExtractRequest):
         confirm_url=req.url.strip(),
         key_name=req.name.strip() if req.name else None,
         use_tor=req.use_tor,
-        rotate_before=req.rotate_before
+        rotate_before=req.rotate_before,
+        proxy_mode=req.proxy_mode or ("tor" if req.use_tor else "residential")
     )
 
     if not result.get("success"):

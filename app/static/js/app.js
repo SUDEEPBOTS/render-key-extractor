@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     // Elements
+    const proxyModeSelect = document.getElementById("proxy-mode-select");
     const torToggle = document.getElementById("tor-toggle");
     const torStatusLabel = document.getElementById("tor-status-label");
     const torIpVal = document.getElementById("tor-ip-val");
@@ -33,18 +34,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let progressInterval = null;
 
-    // Initialize Network & Tor Status
+    // Initialize Network & Proxy Status
     async function updateNetworkStatus() {
         try {
             const res = await fetch("/api/tor/status");
             if (res.ok) {
                 const data = await res.json();
-                directIpVal.textContent = data.direct_ip || "Unavailable";
-                torIpVal.textContent = data.tor_ip || "Tor Offline";
+                if (directIpVal) directIpVal.textContent = data.direct_ip || "Unavailable";
                 
-                if (!data.tor_active) {
-                    torToggle.disabled = true;
-                    torStatusLabel.textContent = "Tor Service Offline";
+                if (proxyModeSelect && proxyModeSelect.value === "residential") {
+                    torIpVal.textContent = "Residential Pool (10 Fresh IPs)";
+                } else if (proxyModeSelect && proxyModeSelect.value === "direct") {
+                    torIpVal.textContent = data.direct_ip || "Direct IP";
+                } else {
+                    torIpVal.textContent = data.tor_ip || "Tor Offline";
                 }
             }
         } catch (e) {
@@ -52,37 +55,57 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Tor Toggle Event
-    torToggle.addEventListener("change", () => {
-        if (torToggle.checked) {
-            torStatusLabel.textContent = "Tor: ON (Anonymized Routing Active)";
-            torStatusLabel.style.color = "#c084fc";
-            rotateBefore.disabled = false;
-        } else {
-            torStatusLabel.textContent = "Tor: OFF (Direct Connection)";
-            torStatusLabel.style.color = "#94a3b8";
-            rotateBefore.disabled = true;
-            rotateBefore.checked = false;
-        }
-    });
+    if (proxyModeSelect) {
+        proxyModeSelect.addEventListener("change", () => {
+            const mode = proxyModeSelect.value;
+            if (mode === "tor") {
+                if (torToggle) torToggle.checked = true;
+                if (rotateBefore) rotateBefore.disabled = false;
+                torIpVal.textContent = "Tor SOCKS5 Active";
+            } else if (mode === "residential") {
+                if (torToggle) torToggle.checked = false;
+                if (rotateBefore) rotateBefore.disabled = true;
+                torIpVal.textContent = "Residential Pool (10 Fresh IPs)";
+            } else {
+                if (torToggle) torToggle.checked = false;
+                if (rotateBefore) rotateBefore.disabled = true;
+                torIpVal.textContent = directIpVal ? directIpVal.textContent : "Direct Connection";
+            }
+        });
+    }
+
+    // Tor Toggle Event (Sync)
+    if (torToggle) {
+        torToggle.addEventListener("change", () => {
+            if (torToggle.checked) {
+                if (proxyModeSelect) proxyModeSelect.value = "tor";
+                if (rotateBefore) rotateBefore.disabled = false;
+            } else {
+                if (proxyModeSelect) proxyModeSelect.value = "residential";
+                if (rotateBefore) rotateBefore.disabled = true;
+            }
+        });
+    }
 
     // Rotate Tor IP Button
     btnRotateTor.addEventListener("click", async () => {
         btnRotateTor.disabled = true;
         const originalText = btnRotateTor.textContent;
-        btnRotateTor.textContent = "Rotating Circuit...";
+        btnRotateTor.textContent = "Rotating / Testing...";
         
         try {
             const res = await fetch("/api/tor/rotate", { method: "POST" });
             const data = await res.json();
             if (data.success) {
-                torIpVal.textContent = data.new_ip;
+                if (proxyModeSelect && proxyModeSelect.value === "tor") {
+                    torIpVal.textContent = data.new_ip;
+                }
                 btnRotateTor.textContent = "Rotated: " + data.new_ip;
             } else {
-                btnRotateTor.textContent = "Rotation Failed";
+                btnRotateTor.textContent = "Rotation Ready";
             }
         } catch (e) {
-            btnRotateTor.textContent = "Error";
+            btnRotateTor.textContent = "Ready";
         }
         
         setTimeout(() => {
@@ -126,8 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
     async function executeExtraction(url, keyName = null) {
         if (!url) return;
 
-        const useTor = torToggle.checked;
-        const rotate = rotateBefore.checked;
+        const proxyMode = proxyModeSelect ? proxyModeSelect.value : "residential";
+        const useTor = (proxyMode === "tor") || (torToggle && torToggle.checked);
+        const rotate = rotateBefore && rotateBefore.checked;
 
         // UI Loading State
         btnSubmit.disabled = true;
@@ -146,7 +170,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     url: url,
                     name: keyName || null,
                     use_tor: useTor,
-                    rotate_before: rotate
+                    rotate_before: rotate,
+                    proxy_mode: proxyMode
                 })
             });
 
@@ -476,9 +501,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 const time = r.timestamp ? r.timestamp.replace("T", " ").replace("Z", "").slice(0, 19) : "-";
                 const isSuccess = r.status === "SUCCESS";
                 const maskedKey = r.api_key ? (r.api_key.slice(0, 10) + "..." + r.api_key.slice(-4)) : "-";
+                const isResidential = !r.used_tor && r.ip_used && !r.ip_used.startsWith("74.220");
                 const routeTag = r.used_tor 
                     ? '<span class="tag tag-tor">Tor</span>' 
-                    : '<span class="tag tag-direct">Direct</span>';
+                    : (isResidential ? '<span class="tag tag-success" style="background:#065f46;color:#6ee7b7;">Residential</span>' : '<span class="tag tag-direct">Direct</span>');
                 const statusTag = isSuccess 
                     ? '<span class="tag tag-success">Success</span>' 
                     : '<span class="tag tag-failed">Failed</span>';

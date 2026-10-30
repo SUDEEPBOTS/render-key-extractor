@@ -24,28 +24,33 @@
             </div>
         </header>
 
-        <!-- Tor Network Control Panel -->
+        <!-- IP Routing & Network Control Panel -->
         <div class="card tor-card">
             <div class="tor-card-header">
                 <div class="tor-title-group">
-                    <span class="section-title">Tor Anonymity & IP Rotation</span>
-                    <span class="info-text">Route requests through Tor to prevent rate limits and IP blocking</span>
+                    <span class="section-title">IP Routing & Proxy Protection</span>
+                    <span class="info-text">Route requests through Fresh Residential IPs or Tor to bypass Cloudflare anti-bot blocks</span>
                 </div>
-                <div class="tor-toggle-wrapper">
-                    <label class="switch">
+                <div class="tor-toggle-wrapper" style="display: flex; gap: 12px; align-items: center;">
+                    <select id="proxy-mode-select" class="styled-select" style="min-width: 220px; font-weight: 600; padding: 6px 12px;">
+                        <option value="residential" selected>Residential Proxies (Fresh Pool)</option>
+                        <option value="tor">Tor SOCKS5 Proxy</option>
+                        <option value="direct">Direct Connection</option>
+                    </select>
+                    <label class="switch" style="display: none;">
                         <input type="checkbox" id="tor-toggle">
                         <span class="slider round"></span>
                     </label>
-                    <span id="tor-status-label" class="toggle-status">Tor: OFF (Direct Connection)</span>
+                    <span id="tor-status-label" class="toggle-status" style="display: none;">Tor: OFF</span>
                 </div>
             </div>
             <div class="tor-details">
                 <div class="tor-ip-info">
-                    <span>Active Tor Exit IP:</span>
-                    <code id="tor-ip-val">Checking...</code>
+                    <span id="active-ip-label">Active Exit Pool:</span>
+                    <code id="tor-ip-val">Residential Proxy Active</code>
                 </div>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-rotate-tor">
-                    Rotate Tor IP (New Identity)
+                    Rotate Tor IP / Test
                 </button>
             </div>
         </div>

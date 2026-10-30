@@ -95,12 +95,21 @@ class MailService:
                     combined_text = (detail.get("textBody") or "") + " " + (detail.get("htmlBody") or "")
                     matches = re.findall(pattern, combined_text)
                     if matches:
+                        import urllib.parse
+                        raw_url = matches[0]
+                        clean_url = raw_url
+                        if "track.pstmrk.it" in raw_url:
+                            decoded = urllib.parse.unquote(raw_url)
+                            m = re.search(r'token=([a-zA-Z0-9_\-]+)', decoded)
+                            if m:
+                                clean_url = f"https://dashboard.render.com/email-confirm/?token={m.group(1)}"
+
                         return {
                             "found": True,
                             "msg_id": msg_id,
                             "subject": subject,
                             "date": em.get("date"),
-                            "confirm_url": matches[0]
+                            "confirm_url": clean_url
                         }
 
             return {
