@@ -490,7 +490,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const yukisboxFileUrl = document.getElementById("yukisbox-file-url");
     const yukisboxRawUrl = document.getElementById("yukisbox-raw-url");
 
+    const BATCH_STORAGE_KEY = "render_batch_keys";
     let collectedBatchKeys = [];
+
+    function saveBatch() {
+        try {
+            localStorage.setItem(BATCH_STORAGE_KEY, JSON.stringify(collectedBatchKeys));
+        } catch (e) {}
+    }
+
+    function loadSavedBatch() {
+        try {
+            const saved = localStorage.getItem(BATCH_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    collectedBatchKeys = parsed;
+                }
+            }
+        } catch (e) {}
+        updateBatchProgress();
+    }
 
     if (batchTargetSelect) {
         batchTargetSelect.addEventListener("change", () => {
@@ -510,6 +530,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function onKeyExtractedInBatch(keyData) {
         collectedBatchKeys.push(keyData);
+        saveBatch();
         updateBatchProgress();
 
         const target = parseInt(batchTargetSelect.value, 10) || 5;
@@ -517,6 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Auto-upload completed batch to Yukisbox!
             await triggerYukisboxUpload(collectedBatchKeys, `Render_Batch_${collectedBatchKeys.length}_Keys`);
             collectedBatchKeys = [];
+            saveBatch();
             updateBatchProgress();
         } else {
             // Automatically queue and generate next email credentials!
@@ -573,11 +595,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // History Loader
+    const historyFilterSelect = document.getElementById("history-filter-select");
+    if (historyFilterSelect) {
+        historyFilterSelect.addEventListener("change", loadHistory);
+    }
+
     async function loadHistory() {
         try {
-            const res = await fetch("/api/history?limit=25");
+            const filterStatus = historyFilterSelect ? historyFilterSelect.value : "SUCCESS";
+            const url = filterStatus ? `/api/history?limit=50&status=${encodeURIComponent(filterStatus)}` : "/api/history?limit=50";
+            const res = await fetch(url);
             if (!res.ok) return;
             const records = await res.json();
+
+            // If local batch is empty, populate from recent successful keys
+            if (collectedBatchKeys.length === 0 && records.length > 0 && filterStatus === "SUCCESS") {
+                const target = parseInt(batchTargetSelect.value, 10) || 5;
+                const recentSuccess = records.filter(r => r.status === "SUCCESS").slice(0, target);
+                if (recentSuccess.length > 0 && recentSuccess.length < target) {
+                    collectedBatchKeys = recentSuccess;
+                    saveBatch();
+                    updateBatchProgress();
+                }
+            }
 
             if (records.length === 0) {
                 historyTbody.innerHTML = '<tr><td colspan="7" class="text-center">No keys extracted yet</td></tr>';
@@ -587,7 +627,8 @@ document.addEventListener("DOMContentLoaded", () => {
             historyTbody.innerHTML = records.map(r => {
                 const time = r.timestamp ? r.timestamp.replace("T", " ").replace("Z", "").slice(0, 19) : "-";
                 const isSuccess = r.status === "SUCCESS";
-                const maskedKey = r.api_key ? (r.api_key.slice(0, 10) + "..." + r.api_key.slice(-4)) : "-";
+                const fullKey = r.api_key || "";
+                const maskedKey = fullKey ? (fullKey.slice(0, 10) + "..." + fullKey.slice(-4)) : "-";
                 const isResidential = !r.used_tor && r.ip_used && !r.ip_used.startsWith("74.220");
                 const routeTag = r.used_tor 
                     ? '<span class="tag tag-tor">Tor</span>' 
@@ -596,10 +637,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     ? '<span class="tag tag-success">Success</span>' 
                     : '<span class="tag tag-failed">Failed</span>';
 
+                const copyBtn = fullKey ? `<button type="button" class="btn btn-sm btn-copy" style="margin-left: 8px; padding: 2px 6px;" onclick="navigator.clipboard.writeText('${fullKey}'); this.textContent='Copied'; setTimeout(() => this.textContent='Copy', 1500);">Copy</button>` : '';
+
                 return `
                     <tr>
                         <td>${time}</td>
-                        <td><code>${maskedKey}</code></td>
+                        <td><code>${maskedKey}</code>${copyBtn}</td>
                         <td>${r.email || "-"}</td>
                         <td>${r.workspace || "-"}</td>
                         <td>${routeTag}</td>
@@ -618,5 +661,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initial Calls
     updateNetworkStatus();
+    loadSavedBatch();
     loadHistory();
 });

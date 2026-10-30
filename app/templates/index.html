@@ -275,7 +275,13 @@
         <!-- History Section -->
         <div class="card history-card">
             <div class="history-header">
-                <h3 class="card-title">Recent Extractions</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <h3 class="card-title">Recent Extractions</h3>
+                    <select id="history-filter-select" class="styled-select select-sm" style="font-size: 12px; padding: 4px 8px;">
+                        <option value="SUCCESS" selected>Successful Keys Only</option>
+                        <option value="">All Records</option>
+                    </select>
+                </div>
                 <button type="button" class="btn btn-sm btn-outline" id="btn-refresh-history">Refresh</button>
             </div>
             <div class="table-container">

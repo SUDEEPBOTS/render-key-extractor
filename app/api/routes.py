@@ -111,8 +111,8 @@ async def rotate_tor():
     return result
 
 @router.get("/api/history")
-async def get_history(limit: int = 20):
-    return get_recent_keys(limit=min(limit, 100))
+async def get_history(limit: int = 50, status: Optional[str] = None):
+    return get_recent_keys(limit=min(limit, 100), status=status)
 
 @router.get("/api/download/env")
 async def download_env(key: str, email: Optional[str] = None, owner_id: Optional[str] = None):

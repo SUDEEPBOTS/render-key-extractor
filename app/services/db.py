@@ -58,17 +58,27 @@ def save_key_record(
         conn.commit()
         return cursor.lastrowid
 
-def get_recent_keys(limit: int = 50) -> list:
+def get_recent_keys(limit: int = 50, status: str = None) -> list:
     init_db()
     with sqlite3.connect(Config.DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, timestamp, api_key, email, workspace, owner_id,
-                   key_name, used_tor, ip_used, status, error
-            FROM api_keys
-            ORDER BY id DESC
-            LIMIT ?
-        """, (limit,))
+        if status:
+            cursor.execute("""
+                SELECT id, timestamp, api_key, email, workspace, owner_id,
+                       key_name, used_tor, ip_used, status, error
+                FROM api_keys
+                WHERE status = ?
+                ORDER BY id DESC
+                LIMIT ?
+            """, (status, limit))
+        else:
+            cursor.execute("""
+                SELECT id, timestamp, api_key, email, workspace, owner_id,
+                       key_name, used_tor, ip_used, status, error
+                FROM api_keys
+                ORDER BY id DESC
+                LIMIT ?
+            """, (limit,))
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
