@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Render API Key Extractor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>Render Key Extractor</h1>
+                <p class="subtitle">Automated Link Confirmation & Key Generator</p>
+            </div>
+            <div class="header-right">
+                <div class="badge" id="service-health-badge">
+                    <span class="dot green"></span> System Healthy
+                </div>
+                <div class="badge" id="direct-ip-badge">
+                    Direct IP: <span id="direct-ip-val">Loading...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tor Network Control Panel -->
+        <div class="card tor-card">
+            <div class="tor-card-header">
+                <div class="tor-title-group">
+                    <span class="section-title">Tor Anonymity & IP Rotation</span>
+                    <span class="info-text">Route requests through Tor to prevent rate limits and IP blocking</span>
+                </div>
+                <div class="tor-toggle-wrapper">
+                    <label class="switch">
+                        <input type="checkbox" id="tor-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span id="tor-status-label" class="toggle-status">Tor: OFF (Direct Connection)</span>
+                </div>
+            </div>
+            <div class="tor-details">
+                <div class="tor-ip-info">
+                    <span>Active Tor Exit IP:</span>
+                    <code id="tor-ip-val">Checking...</code>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-rotate-tor">
+                    Rotate Tor IP (New Identity)
+                </button>
+            </div>
+        </div>
+
+        <!-- Extraction Form -->
+        <div class="card form-card">
+            <h2 class="card-title">Extract Render API Key</h2>
+            <form id="extract-form">
+                <div class="form-group">
+                    <label for="confirm-url">Confirmation URL (Postmark or Render):</label>
+                    <input 
+                        type="url" 
+                        id="confirm-url" 
+                        name="url" 
+                        required 
+                        placeholder="https://track.pstmrk.it/3s/dashboard.render.com... or https://dashboard.render.com/email-confirm/..." 
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="key-name">API Key Name (Optional):</label>
+                        <input 
+                            type="text" 
+                            id="key-name" 
+                            name="name" 
+                            placeholder="AutoDeployKey" 
+                            autocomplete="off"
+                        >
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label" id="rotate-before-label">
+                            <input type="checkbox" id="rotate-before" disabled>
+                            <span>Rotate IP before extraction</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btn-submit">
+                    <span id="btn-text">Generate & Extract API Key</span>
+                    <span id="btn-spinner" class="spinner hidden"></span>
+                </button>
+            </form>
+
+            <!-- Progress Step Indicator -->
+            <div id="progress-box" class="progress-box hidden">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <p id="progress-text" class="progress-text">Starting headless browser...</p>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error-banner" class="alert alert-error hidden">
+                <span class="alert-icon">[Error]</span>
+                <span id="error-message">An error occurred</span>
+            </div>
+        </div>
+
+        <!-- Results Card -->
+        <div id="result-card" class="card result-card hidden">
+            <div class="result-header">
+                <h2>API Key Generated & Verified</h2>
+                <span class="badge badge-success" id="verify-badge">Render API Verified</span>
+            </div>
+
+            <div class="key-box">
+                <div class="key-label">Generated Render API Key:</div>
+                <div class="key-display-row">
+                    <input type="text" id="result-key" readonly>
+                    <button type="button" class="btn btn-copy" id="btn-copy-key">Copy Key</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-download-env">Download .env</button>
+                </div>
+            </div>
+
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Account Email</span>
+                    <span class="detail-value" id="result-email">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Workspace</span>
+                    <span class="detail-value" id="result-workspace">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Workspace Owner ID</span>
+                    <span class="detail-value" id="result-owner">-</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">IP Used</span>
+                    <span class="detail-value" id="result-ip">-</span>
+                </div>
+            </div>
+
+            <div class="curl-test-box">
+                <span class="curl-label">Quick Terminal Test:</span>
+                <pre><code id="curl-test-code">curl -H "Authorization: Bearer rnd_..." https://api.render.com/v1/owners</code></pre>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="card history-card">
+            <div class="history-header">
+                <h3 class="card-title">Recent Extractions</h3>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-refresh-history">Refresh</button>
+            </div>
+            <div class="table-container">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Time (UTC)</th>
+                            <th>API Key</th>
+                            <th>Email</th>
+                            <th>Workspace</th>
+                            <th>Routing</th>
+                            <th>IP Used</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="7" class="text-center">Loading history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <span>Render Key Extractor Service</span> |
+            <span>Health Check: <a href="/ping" target="_blank">/ping</a> (GET/HEAD)</span> |
+            <span>API Docs: <a href="/docs" target="_blank">/docs</a></span>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
