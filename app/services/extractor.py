@@ -24,6 +24,13 @@ def normalize_confirm_url(url: str) -> str:
             return f"https://dashboard.render.com/email-confirm/?token={m.group(1)}"
     return url
 
+def safe_close(context):
+    if context:
+        try:
+            context.close()
+        except Exception:
+            pass
+
 class RenderExtractor:
     @staticmethod
     def extract_from_link(
@@ -125,7 +132,7 @@ class RenderExtractor:
                 try:
                     page.goto(clean_url, wait_until="domcontentloaded", timeout=45000)
                 except Exception as e:
-                    context.close()
+                    safe_close(context)
                     error_msg = f"Failed to load confirmation URL: {str(e)}"
                     save_key_record(
                         status="FAILED",
@@ -147,7 +154,7 @@ class RenderExtractor:
 
                     # Check if confirmation link was already expired/invalid
                     if "Invalid or expired activation link" in body_text:
-                        context.close()
+                        safe_close(context)
                         error_msg = "Activation link is already expired or consumed. Do not click the email link manually; let the tool handle it."
                         save_key_record(
                             status="FAILED",
@@ -188,11 +195,25 @@ class RenderExtractor:
                 if not is_authenticated:
                     try:
                         body_text = page.inner_text("body")
+                        page_content = page.content()
                     except Exception:
                         body_text = ""
-                    if "Invalid or expired activation link" in body_text:
-                        context.close()
+                        page_content = ""
+
+                    if "Invalid or expired activation link" in body_text or "Invalid or expired activation link" in page_content:
+                        safe_close(context)
                         error_msg = "Activation link is already expired or consumed. Do not click the email link manually; let the tool handle it."
+                        save_key_record(
+                            status="FAILED",
+                            key_name=key_name,
+                            used_tor=is_tor,
+                            ip_used=ip_used,
+                            error=error_msg
+                        )
+                        return {"success": False, "error": error_msg, "ip_used": ip_used}
+                    else:
+                        safe_close(context)
+                        error_msg = "Confirmation failed: Account was not authenticated within timeout. Ensure link was not clicked elsewhere."
                         save_key_record(
                             status="FAILED",
                             key_name=key_name,
@@ -209,7 +230,7 @@ class RenderExtractor:
                 try:
                     page.goto("https://dashboard.render.com/u/settings", wait_until="domcontentloaded", timeout=30000)
                 except Exception as e:
-                    context.close()
+                    safe_close(context)
                     error_msg = f"Failed to load settings page: {str(e)}"
                     save_key_record(
                         status="FAILED",
@@ -233,7 +254,7 @@ class RenderExtractor:
                         curr_body = ""
 
                     if "/login" in curr_url or "Sign In to Render" in curr_body:
-                        context.close()
+                        safe_close(context)
                         error_msg = "Not authenticated. The confirmation link did not log in."
                         save_key_record(
                             status="FAILED",
@@ -251,7 +272,7 @@ class RenderExtractor:
                     time.sleep(1.5)
 
                 if not settings_ready:
-                    context.close()
+                    safe_close(context)
                     error_msg = "Could not find 'Create API key' button in settings."
                     save_key_record(
                         status="FAILED",
@@ -298,7 +319,7 @@ class RenderExtractor:
                     time.sleep(1)
 
                 if not api_key:
-                    context.close()
+                    safe_close(context)
                     error_msg = "API key was not found after modal submission."
                     save_key_record(
                         status="FAILED",
@@ -309,7 +330,7 @@ class RenderExtractor:
                     )
                     return {"success": False, "error": error_msg, "ip_used": ip_used}
 
-                context.close()
+                safe_close(context)
 
                 # Step 7: Verify key via Render REST API
                 email = None
