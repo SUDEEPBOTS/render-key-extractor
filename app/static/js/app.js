@@ -164,6 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 showResult(data);
                 loadHistory();
                 confirmUrlInput.value = "";
+                // Store Mode batch hook
+                onKeyExtractedInBatch(data);
             }
         } catch (err) {
             stopProgress();
@@ -218,6 +220,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Mail Assistant Elements
+    const mailProviderSelect = document.getElementById("mail-provider-select");
+    const mailDomainSelect = document.getElementById("mail-domain-select");
     const btnGenerateMail = document.getElementById("btn-generate-mail");
     const credentialsPanel = document.getElementById("credentials-panel");
     const autoEmailInput = document.getElementById("auto-email");
@@ -229,6 +233,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let mailPollInterval = null;
     let mailCheckCount = 0;
     let currentMailToken = null;
+    let currentMailProvider = "yuki";
+
+    // Dynamic Domain Loading per Provider
+    if (mailProviderSelect && mailDomainSelect) {
+        mailProviderSelect.addEventListener("change", async () => {
+            currentMailProvider = mailProviderSelect.value;
+            try {
+                const res = await fetch(`/api/mail/domains?provider=${encodeURIComponent(currentMailProvider)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    mailDomainSelect.innerHTML = data.domains.map(d => `<option value="${d}">${d}</option>`).join("");
+                }
+            } catch (e) {
+                console.error("Failed to load domains", e);
+            }
+        });
+    }
 
     if (btnGenerateMail) {
         btnGenerateMail.addEventListener("click", async () => {
@@ -238,12 +259,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (mailPollInterval) clearInterval(mailPollInterval);
             mailCheckCount = 0;
 
+            const provider = mailProviderSelect ? mailProviderSelect.value : "yuki";
+            const domain = mailDomainSelect ? mailDomainSelect.value : null;
+
             try {
-                const res = await fetch("/api/mail/generate", { method: "POST" });
+                const res = await fetch("/api/mail/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ provider: provider, domain: domain })
+                });
                 const data = await res.json();
                 
                 if (res.ok && data.success) {
                     currentMailToken = data.token;
+                    currentMailProvider = data.provider || provider;
                     autoEmailInput.value = data.email;
                     autoPasswordInput.value = data.password;
                     credentialsPanel.classList.remove("hidden");
@@ -252,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     mailListenerStatus.style.color = "#38bdf8";
                     
                     // Start polling for incoming confirmation link
-                    startMailListener(data.token);
+                    startMailListener(data.token, currentMailProvider);
                 } else {
                     alert("Failed to generate mailbox: " + (data.detail || data.error));
                 }
@@ -265,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function startMailListener(token) {
+    function startMailListener(token, provider) {
         if (mailPollInterval) clearInterval(mailPollInterval);
         
         mailPollInterval = setInterval(async () => {
@@ -273,7 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mailListenerStatus.textContent = `Listening for Render confirmation email... (Checked ${mailCheckCount} times)`;
 
             try {
-                const res = await fetch(`/api/mail/check?token=${encodeURIComponent(token)}`);
+                const res = await fetch(`/api/mail/check?token=${encodeURIComponent(token)}&provider=${encodeURIComponent(provider)}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.found && data.confirm_url) {
@@ -326,6 +355,96 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnCopyPassword.style.backgroundColor = "";
                 }, 1500);
             });
+        });
+    }
+
+    // Store Mode & Yukisbox
+    const batchTargetSelect = document.getElementById("batch-target-select");
+    const batchCountDisplay = document.getElementById("batch-count-display");
+    const batchTargetDisplay = document.getElementById("batch-target-display");
+    const batchProgressBar = document.getElementById("batch-progress-bar");
+    const btnUploadYukisboxManual = document.getElementById("btn-upload-yukisbox-manual");
+    const yukisboxResultBox = document.getElementById("yukisbox-result-box");
+    const yukisboxFileUrl = document.getElementById("yukisbox-file-url");
+    const yukisboxRawUrl = document.getElementById("yukisbox-raw-url");
+
+    let collectedBatchKeys = [];
+
+    if (batchTargetSelect) {
+        batchTargetSelect.addEventListener("change", () => {
+            batchTargetDisplay.textContent = batchTargetSelect.value;
+            updateBatchProgress();
+        });
+    }
+
+    function updateBatchProgress() {
+        const target = parseInt(batchTargetSelect.value, 10) || 5;
+        const current = collectedBatchKeys.length;
+        batchCountDisplay.textContent = current;
+        batchTargetDisplay.textContent = target;
+        const pct = Math.min(100, Math.round((current / target) * 100));
+        batchProgressBar.style.width = pct + "%";
+    }
+
+    async function onKeyExtractedInBatch(keyData) {
+        collectedBatchKeys.push(keyData);
+        updateBatchProgress();
+
+        const target = parseInt(batchTargetSelect.value, 10) || 5;
+        if (collectedBatchKeys.length >= target) {
+            // Auto-upload completed batch to Yukisbox!
+            await triggerYukisboxUpload(collectedBatchKeys, `Render_Batch_${collectedBatchKeys.length}_Keys`);
+            collectedBatchKeys = [];
+            updateBatchProgress();
+        } else {
+            // Automatically queue and generate next email credentials!
+            if (btnGenerateMail) {
+                setTimeout(() => {
+                    btnGenerateMail.click();
+                }, 1500);
+            }
+        }
+    }
+
+    async function triggerYukisboxUpload(keysList = null, title = null) {
+        try {
+            const body = {};
+            if (keysList && keysList.length > 0) {
+                body.keys = keysList;
+            }
+            if (title) body.title = title;
+
+            const res = await fetch("/api/yukisbox/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                yukisboxFileUrl.href = data.url;
+                yukisboxFileUrl.textContent = data.url;
+                yukisboxRawUrl.href = data.raw_url;
+                yukisboxRawUrl.textContent = data.raw_url;
+                yukisboxResultBox.classList.remove("hidden");
+                yukisboxResultBox.scrollIntoView({ behavior: "smooth" });
+            } else {
+                alert("Yukisbox upload failed: " + (data.detail || data.error));
+            }
+        } catch (e) {
+            alert("Yukisbox upload error: " + e.message);
+        }
+    }
+
+    if (btnUploadYukisboxManual) {
+        btnUploadYukisboxManual.addEventListener("click", () => {
+            btnUploadYukisboxManual.disabled = true;
+            btnUploadYukisboxManual.textContent = "Uploading to Yukisbox...";
+            triggerYukisboxUpload(collectedBatchKeys.length > 0 ? collectedBatchKeys : null)
+                .finally(() => {
+                    btnUploadYukisboxManual.disabled = false;
+                    btnUploadYukisboxManual.textContent = "Upload Keys to Yukisbox Now";
+                });
         });
     }
 

@@ -55,18 +55,39 @@
             <div class="card-header-row">
                 <div>
                     <h2 class="card-title" style="color: #60a5fa; margin-bottom: 4px;">Auto Mailbox & Account Assistant</h2>
-                    <p class="subtitle">Generate disposable mailbox on mail.yukisbox.com, sign up on Render, and auto-detect confirmation link.</p>
+                    <p class="subtitle">Select mail provider, generate disposable mailbox, sign up on Render, and auto-detect confirmation link.</p>
                 </div>
-                <button type="button" class="btn btn-primary" id="btn-generate-mail" style="width: auto; padding: 10px 18px;">
-                    Generate Credentials
-                </button>
+            </div>
+
+            <!-- Provider & Domain Selection -->
+            <div class="mail-provider-row">
+                <div class="form-group flex-1">
+                    <label for="mail-provider-select">Mail Provider:</label>
+                    <select id="mail-provider-select" class="styled-select">
+                        <option value="yuki" selected>Yuki Mail (yukisbox.com / yukiapi.site)</option>
+                        <option value="mailtm">Mail.tm (maxxspace.com)</option>
+                    </select>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="mail-domain-select">Domain:</label>
+                    <select id="mail-domain-select" class="styled-select">
+                        <option value="yukisbox.com">yukisbox.com</option>
+                        <option value="yukiapi.site">yukiapi.site</option>
+                    </select>
+                </div>
+                <div class="form-group flex-btn">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-primary" id="btn-generate-mail">
+                        Generate Credentials
+                    </button>
+                </div>
             </div>
 
             <!-- Generated Credentials Panel (Hidden until generated) -->
             <div id="credentials-panel" class="credentials-panel hidden">
                 <div class="creds-grid">
                     <div class="cred-item">
-                        <label>Generated Email (mail.yukisbox.com):</label>
+                        <label>Generated Email:</label>
                         <div class="cred-input-row">
                             <input type="text" id="auto-email" readonly>
                             <button type="button" class="btn btn-copy btn-sm" id="btn-copy-email">Copy</button>
@@ -88,6 +109,57 @@
                     <div class="status-indicator-box">
                         <span class="pulse-dot"></span>
                         <span id="mail-listener-status">Listening for Render confirmation email... (Checked 0 times)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Store Mode / Yukisbox Batch Auto-Upload -->
+        <div class="card store-mode-card">
+            <div class="card-header-row">
+                <div>
+                    <h2 class="card-title" style="color: #34d399; margin-bottom: 4px;">Store Mode (Yukisbox Cloud Auto-Upload)</h2>
+                    <p class="subtitle">Collect target batch of keys and auto-upload to yukisbox.com/upload-text once batch completes.</p>
+                </div>
+                <div class="store-controls-row">
+                    <label for="batch-target-select">Batch Target:</label>
+                    <select id="batch-target-select" class="styled-select select-sm">
+                        <option value="1">1 Key</option>
+                        <option value="3">3 Keys</option>
+                        <option value="5" selected>5 Keys</option>
+                        <option value="10">10 Keys</option>
+                    </select>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-upload-yukisbox-manual">
+                        Upload Keys to Yukisbox Now
+                    </button>
+                </div>
+            </div>
+
+            <!-- Batch Progress Bar & Status -->
+            <div class="batch-status-panel">
+                <div class="batch-info-line">
+                    <span>Batch Progress: <strong id="batch-count-display">0</strong> / <strong id="batch-target-display">5</strong> Keys Extracted</span>
+                    <span id="batch-status-tag" class="tag tag-direct">Store Mode Active</span>
+                </div>
+                <div class="progress-bar-container" style="margin-top: 8px;">
+                    <div class="progress-bar-static" id="batch-progress-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Yukisbox Link Box (shown once uploaded) -->
+            <div id="yukisbox-result-box" class="yukisbox-result-box hidden">
+                <div class="yukisbox-header">
+                    <span>Yukisbox Cloud Storage Upload Complete</span>
+                    <span class="badge badge-success">Live on yukisbox.com</span>
+                </div>
+                <div class="yukisbox-links">
+                    <div class="link-item">
+                        <span class="link-label">View Paste:</span>
+                        <a id="yukisbox-file-url" href="#" target="_blank">-</a>
+                    </div>
+                    <div class="link-item">
+                        <span class="link-label">Raw URL:</span>
+                        <a id="yukisbox-raw-url" href="#" target="_blank">-</a>
                     </div>
                 </div>
             </div>

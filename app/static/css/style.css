@@ -691,6 +691,122 @@ input[type="text"]:focus {
     100% { transform: scale(0.95); opacity: 0.7; }
 }
 
+/* Provider Select Row */
+.mail-provider-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    margin-top: 14px;
+    flex-wrap: wrap;
+}
+
+.flex-btn {
+    min-width: 180px;
+}
+
+.styled-select {
+    width: 100%;
+    padding: 10px 14px;
+    background-color: #0b0f19;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-stack);
+    outline: none;
+    cursor: pointer;
+}
+
+.styled-select:focus {
+    border-color: var(--border-focus);
+}
+
+.select-sm {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+/* Store Mode Card */
+.store-mode-card {
+    border-color: #065f46;
+    background: linear-gradient(180deg, #09231c 0%, var(--bg-card) 100%);
+}
+
+.store-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.batch-status-panel {
+    margin-top: 14px;
+    padding: 14px;
+    background-color: #0b0f19;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.batch-info-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #e2e8f0;
+}
+
+.progress-bar-static {
+    height: 6px;
+    background-color: var(--success);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+
+/* Yukisbox Result Box */
+.yukisbox-result-box {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background-color: #051410;
+    border: 1px solid #10b981;
+    border-radius: 8px;
+}
+
+.yukisbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #34d399;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.yukisbox-links {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 13px;
+}
+
+.link-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.link-label {
+    color: var(--text-muted);
+}
+
+.link-item a {
+    color: #38bdf8;
+    text-decoration: underline;
+    font-family: var(--font-mono);
+}
+
 /* Footer */
 .app-footer {
     text-align: center;

@@ -7,7 +7,27 @@ YUKI_MAIL_BASE = "https://mail.yukisbox.com"
 
 class MailService:
     @staticmethod
-    def generate_credentials(domain: str = "yukisbox.com") -> dict:
+    def get_domains(provider: str = "yuki") -> list:
+        try:
+            r = requests.get(
+                f"{YUKI_MAIL_BASE}/api/domains",
+                params={"provider": provider},
+                timeout=8
+            )
+            if r.status_code == 200:
+                domains = r.json()
+                if isinstance(domains, list) and domains:
+                    return domains
+        except Exception:
+            pass
+        return ["yukisbox.com", "yukiapi.site"]
+
+    @staticmethod
+    def generate_credentials(domain: str = None, provider: str = "yuki") -> dict:
+        if not domain:
+            avail = MailService.get_domains(provider)
+            domain = avail[0] if avail else "yukisbox.com"
+
         username = "rnd" + "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
         
         # Generate clean strong password
@@ -18,8 +38,9 @@ class MailService:
         try:
             r = requests.post(
                 f"{YUKI_MAIL_BASE}/api/account",
+                params={"provider": provider},
                 json={"username": username, "domain": domain},
-                timeout=10
+                timeout=12
             )
             data = r.json()
             if r.status_code == 200 and data.get("success"):
@@ -31,21 +52,22 @@ class MailService:
                     "token": token,
                     "password": password,
                     "domain": domain,
+                    "provider": provider,
                     "signup_url": "https://dashboard.render.com/register"
                 }
             return {
                 "success": False,
-                "error": data.get("detail", "Failed to create mailbox on mail.yukisbox.com")
+                "error": data.get("detail", f"Failed to create mailbox on {provider}")
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     @staticmethod
-    def check_render_email(token: str) -> dict:
+    def check_render_email(token: str, provider: str = "yuki") -> dict:
         try:
             r = requests.get(
                 f"{YUKI_MAIL_BASE}/api/emails",
-                params={"token": token},
+                params={"token": token, "provider": provider},
                 timeout=10
             )
             if r.status_code != 200:
@@ -65,7 +87,7 @@ class MailService:
                 # Fetch email detail
                 detail_res = requests.get(
                     f"{YUKI_MAIL_BASE}/api/email/{msg_id}",
-                    params={"token": token},
+                    params={"token": token, "provider": provider},
                     timeout=10
                 )
                 if detail_res.status_code == 200:
