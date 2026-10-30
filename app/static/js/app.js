@@ -175,7 +175,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 })
             });
 
-            const data = await res.json();
+            const textResponse = await res.text();
+            let data = {};
+            try {
+                data = JSON.parse(textResponse);
+            } catch (parseErr) {
+                if (res.status === 502 || res.status === 503 || res.status === 504) {
+                    throw new Error("Render container memory limit exceeded or restarted (HTTP " + res.status + "). Please retry.");
+                }
+                throw new Error("Server returned non-JSON response (HTTP " + res.status + "): " + (textResponse.slice(0, 120) || "Empty response"));
+            }
+
             stopProgress();
 
             if (!res.ok || !data.success) {

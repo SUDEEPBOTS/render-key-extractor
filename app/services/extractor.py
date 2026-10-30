@@ -88,6 +88,18 @@ class RenderExtractor:
                         "--disable-setuid-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
+                        "--no-zygote",
+                        "--single-process",
+                        "--renderer-process-limit=1",
+                        "--js-flags=--max-old-space-size=64",
+                        "--disable-software-rasterizer",
+                        "--mute-audio",
+                        "--disable-background-networking",
+                        "--disable-background-timer-throttling",
+                        "--disable-backgrounding-occluded-windows",
+                        "--disable-breakpad",
+                        "--disable-component-update",
+                        "--disable-sync",
                         "--no-first-run",
                         "--disable-extensions"
                     ]
@@ -98,6 +110,18 @@ class RenderExtractor:
 
                 context = p.chromium.launch_persistent_context(**launch_kwargs)
                 page = context.pages[0] if context.pages else context.new_page()
+
+                # Block heavy external trackers and media to stay strictly within 512MB memory limit
+                def route_filter(route):
+                    url = route.request.url.lower()
+                    blocked = ['intercom', 'hsadspixel', 'datadoghq', 'sentry', 'hotjar', 'posthog']
+                    if any(d in url for d in blocked):
+                        return route.abort()
+                    if route.request.resource_type in ['image', 'media', 'font']:
+                        return route.abort()
+                    return route.continue_()
+
+                page.route("**/*", route_filter)
 
                 # Step 1: Navigate to confirmation link
                 try:
@@ -338,3 +362,5 @@ class RenderExtractor:
                 }
         finally:
             shutil.rmtree(profile_dir, ignore_errors=True)
+            import gc
+            gc.collect()

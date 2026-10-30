@@ -5,6 +5,27 @@ from app.config import Config
 
 class TorManager:
     @staticmethod
+    def ensure_tor_running() -> bool:
+        """Starts Tor on-demand if not already running."""
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.settimeout(1)
+            s.connect((Config.TOR_CONTROL_HOST, Config.TOR_CONTROL_PORT))
+            s.close()
+            return True
+        except Exception:
+            pass
+        
+        import subprocess
+        try:
+            subprocess.run(["tor", "--RunAsDaemon", "1"], check=False)
+            time.sleep(2)
+            return True
+        except Exception as e:
+            print("Failed to start Tor on demand:", e)
+            return False
+
+    @staticmethod
     def get_direct_ip(timeout: int = 5) -> str:
         try:
             r = requests.get("https://api.ipify.org?format=json", timeout=timeout)
@@ -16,6 +37,7 @@ class TorManager:
 
     @staticmethod
     def get_tor_ip(timeout: int = 8) -> str:
+        TorManager.ensure_tor_running()
         proxies = {
             "http": Config.TOR_SOCKS_PROXY,
             "https": Config.TOR_SOCKS_PROXY

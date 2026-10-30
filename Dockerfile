@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/playwright/python:v1.49.0-noble
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV NODE_OPTIONS="--max-old-space-size=48"
+ENV MALLOC_ARENA_MAX=2
 
 # Install Tor and curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
