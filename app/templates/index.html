@@ -111,6 +111,18 @@
                         <span id="mail-listener-status">Listening for Render confirmation email... (Checked 0 times)</span>
                     </div>
                 </div>
+            <!-- Dynamic Progress & Status Indicator (Visible during Auto & Manual modes) -->
+            <div id="progress-box" class="progress-box hidden" style="margin-top: 20px;">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <p id="progress-text" class="progress-text">Starting automated headless browser...</p>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error-banner" class="alert alert-error hidden" style="margin-top: 16px;">
+                <span class="alert-icon">[Error]</span>
+                <span id="error-message">An error occurred</span>
             </div>
         </div>
 
@@ -119,7 +131,7 @@
             <div class="card-header-row">
                 <div>
                     <h2 class="card-title" style="color: #34d399; margin-bottom: 4px;">Store Mode (Yukisbox Cloud Auto-Upload)</h2>
-                    <p class="subtitle">Collect target batch of keys and auto-upload to yukisbox.com/upload-text once batch completes.</p>
+                    <p class="subtitle">Continuously collect target batch of keys and auto-upload to yukisbox.com/upload-text once batch completes.</p>
                 </div>
                 <div class="store-controls-row">
                     <label for="batch-target-select">Batch Target:</label>
@@ -165,61 +177,49 @@
             </div>
         </div>
 
-        <!-- Extraction Form -->
-        <div class="card form-card">
-            <h2 class="card-title">Extract Render API Key</h2>
-            <form id="extract-form">
-                <div class="form-group">
-                    <label for="confirm-url">Confirmation URL (Postmark or Render):</label>
-                    <input 
-                        type="url" 
-                        id="confirm-url" 
-                        name="url" 
-                        required 
-                        placeholder="https://track.pstmrk.it/3s/dashboard.render.com... or https://dashboard.render.com/email-confirm/..." 
-                        autocomplete="off"
-                    >
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group flex-1">
-                        <label for="key-name">API Key Name (Optional):</label>
+        <!-- Optional Manual URL Paste (Collapsible Fallback) -->
+        <details class="card manual-card">
+            <summary class="manual-summary">Manual URL Paste (Optional Fallback)</summary>
+            <div style="margin-top: 16px;">
+                <p class="subtitle" style="margin-bottom: 12px;">Only use this if you already have an old activation link and want to extract it manually without auto-mailbox.</p>
+                <form id="extract-form">
+                    <div class="form-group">
+                        <label for="confirm-url">Manual Confirmation URL:</label>
                         <input 
-                            type="text" 
-                            id="key-name" 
-                            name="name" 
-                            placeholder="AutoDeployKey" 
+                            type="url" 
+                            id="confirm-url" 
+                            name="url" 
+                            placeholder="https://track.pstmrk.it/3s/... or https://dashboard.render.com/email-confirm/..." 
                             autocomplete="off"
                         >
                     </div>
-                    <div class="form-group checkbox-group">
-                        <label class="checkbox-label" id="rotate-before-label">
-                            <input type="checkbox" id="rotate-before" disabled>
-                            <span>Rotate IP before extraction</span>
-                        </label>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="key-name">API Key Name (Optional):</label>
+                            <input 
+                                type="text" 
+                                id="key-name" 
+                                name="name" 
+                                placeholder="AutoDeployKey" 
+                                autocomplete="off"
+                            >
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label" id="rotate-before-label">
+                                <input type="checkbox" id="rotate-before" disabled>
+                                <span>Rotate Tor IP before extraction</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <button type="submit" class="btn btn-primary" id="btn-submit">
-                    <span id="btn-text">Generate & Extract API Key</span>
-                    <span id="btn-spinner" class="spinner hidden"></span>
-                </button>
-            </form>
-
-            <!-- Progress Step Indicator -->
-            <div id="progress-box" class="progress-box hidden">
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="progress-bar"></div>
-                </div>
-                <p id="progress-text" class="progress-text">Starting headless browser...</p>
+                    <button type="submit" class="btn btn-primary" id="btn-submit">
+                        <span id="btn-text">Extract From Pasted Link</span>
+                        <span id="btn-spinner" class="spinner hidden"></span>
+                    </button>
+                </form>
             </div>
-
-            <!-- Error Banner -->
-            <div id="error-banner" class="alert alert-error hidden">
-                <span class="alert-icon">[Error]</span>
-                <span id="error-message">An error occurred</span>
-            </div>
-        </div>
+        </details>
 
         <!-- Results Card -->
         <div id="result-card" class="card result-card hidden">

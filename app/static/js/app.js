@@ -122,20 +122,16 @@ document.addEventListener("DOMContentLoaded", () => {
         progressBox.classList.add("hidden");
     }
 
-    // Form Submit Event
-    extractForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        
-        const url = confirmUrlInput.value.trim();
-        const name = keyNameInput.value.trim();
+    // Unified Direct Extraction Function (No Paste, 100% Automated)
+    async function executeExtraction(url, keyName = null) {
+        if (!url) return;
+
         const useTor = torToggle.checked;
         const rotate = rotateBefore.checked;
 
-        if (!url) return;
-
         // UI Loading State
         btnSubmit.disabled = true;
-        btnText.textContent = "Extracting Key...";
+        btnText.textContent = "Extracting...";
         btnSpinner.classList.remove("hidden");
         errorBanner.classList.add("hidden");
         resultCard.classList.add("hidden");
@@ -148,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     url: url,
-                    name: name || null,
+                    name: keyName || null,
                     use_tor: useTor,
                     rotate_before: rotate
                 })
@@ -160,20 +156,36 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!res.ok || !data.success) {
                 const msg = data.detail || data.error || "Failed to extract key.";
                 showError(msg);
+                mailListenerStatus.textContent = "Extraction failed: " + msg;
+                mailListenerStatus.style.color = "#ef4444";
             } else {
+                mailListenerStatus.textContent = "Render API Key successfully generated & verified!";
+                mailListenerStatus.style.color = "#10b981";
                 showResult(data);
                 loadHistory();
-                confirmUrlInput.value = "";
+                if (confirmUrlInput) confirmUrlInput.value = "";
                 // Store Mode batch hook
-                onKeyExtractedInBatch(data);
+                await onKeyExtractedInBatch(data);
             }
         } catch (err) {
             stopProgress();
             showError("Network connection error: " + err.message);
+            mailListenerStatus.textContent = "Error: " + err.message;
+            mailListenerStatus.style.color = "#ef4444";
         } finally {
             btnSubmit.disabled = false;
-            btnText.textContent = "Generate & Extract API Key";
+            btnText.textContent = "Extract From Pasted Link";
             btnSpinner.classList.add("hidden");
+        }
+    }
+
+    // Manual Form Submit Event (Fallback Only)
+    extractForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const url = confirmUrlInput.value.trim();
+        const name = keyNameInput.value.trim();
+        if (url) {
+            await executeExtraction(url, name);
         }
     });
 
@@ -310,22 +322,22 @@ document.addEventListener("DOMContentLoaded", () => {
                         mailListenerStatus.textContent = "Confirmation email detected! Auto-starting key extraction...";
                         mailListenerStatus.style.color = "#10b981";
 
-                        // Automatically fill URL and trigger extraction
-                        confirmUrlInput.value = data.confirm_url;
-                        extractForm.dispatchEvent(new Event("submit"));
+                        // Directly start extraction without any manual copy-paste!
+                        if (confirmUrlInput) confirmUrlInput.value = data.confirm_url;
+                        await executeExtraction(data.confirm_url);
                     }
                 }
             } catch (e) {
                 console.warn("Mail check error:", e);
             }
 
-            // Stop polling after 120 checks (6 minutes)
-            if (mailCheckCount >= 120) {
+            // Stop polling after 180 checks (6 minutes)
+            if (mailCheckCount >= 180) {
                 clearInterval(mailPollInterval);
                 mailListenerStatus.textContent = "Listening timed out (6 min). Click generate to try again.";
                 mailListenerStatus.style.color = "#ef4444";
             }
-        }, 3000);
+        }, 2000);
     }
 
     if (btnCopyEmail) {

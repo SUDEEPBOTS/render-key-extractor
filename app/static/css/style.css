@@ -807,6 +807,25 @@ input[type="text"]:focus {
     font-family: var(--font-mono);
 }
 
+/* Collapsible Manual Fallback Card */
+.manual-card {
+    border-color: #1e293b;
+    background-color: #0d131f;
+}
+
+.manual-summary {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+}
+
+.manual-summary:hover {
+    color: #93c5fd;
+}
+
 /* Footer */
 .app-footer {
     text-align: center;
