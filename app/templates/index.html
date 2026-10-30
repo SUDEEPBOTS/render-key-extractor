@@ -50,6 +50,49 @@
             </div>
         </div>
 
+        <!-- Auto Account Generator (mail.yukisbox.com) -->
+        <div class="card auto-mail-card">
+            <div class="card-header-row">
+                <div>
+                    <h2 class="card-title" style="color: #60a5fa; margin-bottom: 4px;">Auto Mailbox & Account Assistant</h2>
+                    <p class="subtitle">Generate disposable mailbox on mail.yukisbox.com, sign up on Render, and auto-detect confirmation link.</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="btn-generate-mail" style="width: auto; padding: 10px 18px;">
+                    Generate Credentials
+                </button>
+            </div>
+
+            <!-- Generated Credentials Panel (Hidden until generated) -->
+            <div id="credentials-panel" class="credentials-panel hidden">
+                <div class="creds-grid">
+                    <div class="cred-item">
+                        <label>Generated Email (mail.yukisbox.com):</label>
+                        <div class="cred-input-row">
+                            <input type="text" id="auto-email" readonly>
+                            <button type="button" class="btn btn-copy btn-sm" id="btn-copy-email">Copy</button>
+                        </div>
+                    </div>
+                    <div class="cred-item">
+                        <label>Generated Password:</label>
+                        <div class="cred-input-row">
+                            <input type="text" id="auto-password" readonly>
+                            <button type="button" class="btn btn-copy btn-sm" id="btn-copy-password">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-bar-row">
+                    <a href="https://dashboard.render.com/register" target="_blank" class="btn btn-secondary" id="btn-open-render">
+                        Open Render Sign Up
+                    </a>
+                    <div class="status-indicator-box">
+                        <span class="pulse-dot"></span>
+                        <span id="mail-listener-status">Listening for Render confirmation email... (Checked 0 times)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Extraction Form -->
         <div class="card form-card">
             <h2 class="card-title">Extract Render API Key</h2>

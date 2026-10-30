@@ -6,6 +6,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.services.extractor import RenderExtractor
 from app.services.tor_manager import TorManager
+from app.services.mail_service import MailService
 from app.services.db import get_recent_keys
 
 router = APIRouter()
@@ -106,3 +107,15 @@ async def list_render_services(key: str):
         return res.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/mail/generate")
+async def generate_mail(domain: str = "yukisbox.com"):
+    result = await run_in_threadpool(MailService.generate_credentials, domain=domain)
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to generate mail credentials"))
+    return result
+
+@router.get("/api/mail/check")
+async def check_mail(token: str):
+    result = await run_in_threadpool(MailService.check_render_email, token=token)
+    return result

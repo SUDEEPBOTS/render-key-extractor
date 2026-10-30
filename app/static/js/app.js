@@ -217,6 +217,118 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Mail Assistant Elements
+    const btnGenerateMail = document.getElementById("btn-generate-mail");
+    const credentialsPanel = document.getElementById("credentials-panel");
+    const autoEmailInput = document.getElementById("auto-email");
+    const autoPasswordInput = document.getElementById("auto-password");
+    const btnCopyEmail = document.getElementById("btn-copy-email");
+    const btnCopyPassword = document.getElementById("btn-copy-password");
+    const mailListenerStatus = document.getElementById("mail-listener-status");
+
+    let mailPollInterval = null;
+    let mailCheckCount = 0;
+    let currentMailToken = null;
+
+    if (btnGenerateMail) {
+        btnGenerateMail.addEventListener("click", async () => {
+            btnGenerateMail.disabled = true;
+            btnGenerateMail.textContent = "Generating...";
+            
+            if (mailPollInterval) clearInterval(mailPollInterval);
+            mailCheckCount = 0;
+
+            try {
+                const res = await fetch("/api/mail/generate", { method: "POST" });
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    currentMailToken = data.token;
+                    autoEmailInput.value = data.email;
+                    autoPasswordInput.value = data.password;
+                    credentialsPanel.classList.remove("hidden");
+                    
+                    mailListenerStatus.textContent = `Listening on ${data.email}... (Checked 0 times)`;
+                    mailListenerStatus.style.color = "#38bdf8";
+                    
+                    // Start polling for incoming confirmation link
+                    startMailListener(data.token);
+                } else {
+                    alert("Failed to generate mailbox: " + (data.detail || data.error));
+                }
+            } catch (err) {
+                alert("Network error creating mailbox: " + err.message);
+            } finally {
+                btnGenerateMail.disabled = false;
+                btnGenerateMail.textContent = "Generate New Credentials";
+            }
+        });
+    }
+
+    function startMailListener(token) {
+        if (mailPollInterval) clearInterval(mailPollInterval);
+        
+        mailPollInterval = setInterval(async () => {
+            mailCheckCount++;
+            mailListenerStatus.textContent = `Listening for Render confirmation email... (Checked ${mailCheckCount} times)`;
+
+            try {
+                const res = await fetch(`/api/mail/check?token=${encodeURIComponent(token)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.found && data.confirm_url) {
+                        clearInterval(mailPollInterval);
+                        mailListenerStatus.textContent = "Confirmation email detected! Auto-starting key extraction...";
+                        mailListenerStatus.style.color = "#10b981";
+
+                        // Automatically fill URL and trigger extraction
+                        confirmUrlInput.value = data.confirm_url;
+                        extractForm.dispatchEvent(new Event("submit"));
+                    }
+                }
+            } catch (e) {
+                console.warn("Mail check error:", e);
+            }
+
+            // Stop polling after 120 checks (6 minutes)
+            if (mailCheckCount >= 120) {
+                clearInterval(mailPollInterval);
+                mailListenerStatus.textContent = "Listening timed out (6 min). Click generate to try again.";
+                mailListenerStatus.style.color = "#ef4444";
+            }
+        }, 3000);
+    }
+
+    if (btnCopyEmail) {
+        btnCopyEmail.addEventListener("click", () => {
+            if (!autoEmailInput.value) return;
+            navigator.clipboard.writeText(autoEmailInput.value).then(() => {
+                const orig = btnCopyEmail.textContent;
+                btnCopyEmail.textContent = "Copied!";
+                btnCopyEmail.style.backgroundColor = "#10b981";
+                setTimeout(() => {
+                    btnCopyEmail.textContent = orig;
+                    btnCopyEmail.style.backgroundColor = "";
+                }, 1500);
+            });
+        });
+    }
+
+    if (btnCopyPassword) {
+        btnCopyPassword.addEventListener("click", () => {
+            if (!autoPasswordInput.value) return;
+            navigator.clipboard.writeText(autoPasswordInput.value).then(() => {
+                const orig = btnCopyPassword.textContent;
+                btnCopyPassword.textContent = "Copied!";
+                btnCopyPassword.style.backgroundColor = "#10b981";
+                setTimeout(() => {
+                    btnCopyPassword.textContent = orig;
+                    btnCopyPassword.style.backgroundColor = "";
+                }, 1500);
+            });
+        });
+    }
+
     // History Loader
     async function loadHistory() {
         try {
